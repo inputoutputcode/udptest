@@ -21,7 +21,7 @@ namespace Client.Two
 
             var udpClient = new UdpClient(1002);
             udpClient.Connect(serverAddress, serverPort);
-            
+
             SendMessage(udpClient);
 
             var remoteIpEndPoint = new IPEndPoint(serverAddress, serverPort);
@@ -36,7 +36,7 @@ namespace Client.Two
 
         public void SendMessage(UdpClient udpClient)
         {
-            Thread.Sleep(10000);
+            Thread.Sleep(4000);
 
             string messageText = "Hello Server! #" + messageCount;
             byte[] sendBytes = Encoding.UTF8.GetBytes(messageText);

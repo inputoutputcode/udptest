@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -13,19 +16,12 @@ namespace Server
         public bool messageReceived = false;
         public bool messageSent = false;
         public int messageCount = 0;
+        public ConcurrentBag<UdpState> clientList = new ConcurrentBag<UdpState>();
+        private readonly Timer broadCastTimer;
 
         public MessageServer()
         {
             // Receive a message and write it to the console.
-            var udpStateServer = GetServerUdpState();
-
-            udpStateServer.udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), udpStateServer);
-
-            Log("Server is listening...");
-        }
-
-        private UdpState GetServerUdpState()
-        {
             var endPointServer = new IPEndPoint(IPAddress.Any, listenPort);
             var udpClientServer = new UdpClient(endPointServer);
 
@@ -35,7 +31,32 @@ namespace Server
                 udpClient = udpClientServer
             };
 
-            return udpStateServer;
+            udpStateServer.udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), udpStateServer);
+
+            Log("Server is listening...");
+
+            broadCastTimer = new Timer(BroadCastPlayerList, udpClientServer, 10000, 10000);
+        }
+
+        public void BroadCastPlayerList(object localUdpClient)
+        {
+            var udpClientServer = (UdpClient)localUdpClient;
+
+            var list = clientList.ToImmutableList<UdpState>();
+            string message = $"Server status: {clientList.Count} Players(s)";
+
+            foreach (UdpState udpStateClient in list)
+            {
+                SendMessage(udpClientServer, udpStateClient.endPoint, message);
+            }
+        }
+
+        private void AddClient(UdpState client)
+        {
+            var list = clientList.ToImmutableList<UdpState>();
+
+            if (!list.Exists(c => c.endPoint.Port == client.endPoint.Port))
+                clientList.Add(client);
         }
 
         public async void ReceiveCallback(IAsyncResult result)
@@ -47,18 +68,21 @@ namespace Server
 
                 byte[] receiveBytes = udpClient.EndReceive(result, ref endPoint);
 
-                UdpState udpStateServer = new UdpState
+                UdpState udpStateClient = new UdpState
                 {
                     endPoint = endPoint,
                     udpClient = udpClient
                 };
-                udpStateServer.udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), udpStateServer);
+                udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), udpStateClient);
+
+                AddClient(udpStateClient);
 
                 string receiveString = Encoding.UTF8.GetString(receiveBytes);
 
                 Log($"Message received: {receiveString}", endPoint);
 
-                SendMessage(udpClient, endPoint, receiveString);
+                string messageRespond = $"Hello client, I receveived: {receiveString}";
+                SendMessage(udpClient, endPoint, messageRespond);
             }
             catch (ArgumentNullException ex)
             {
@@ -86,9 +110,8 @@ namespace Server
             }
         }
 
-        private void SendMessage(UdpClient udpClient, IPEndPoint endPoint, string receiveString)
+        private void SendMessage(UdpClient udpClient, IPEndPoint endPoint, string messageRespond)
         {
-            string messageRespond = $"Hello client, I receveived: {receiveString}";
             byte[] responseBytes = Encoding.UTF8.GetBytes(messageRespond);
 
             // TODO: use End for broadcast
