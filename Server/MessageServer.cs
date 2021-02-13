@@ -11,43 +11,85 @@ namespace Server
     {
         public int listenPort = 1000;
         public bool messageReceived = false;
+        public bool messageSent = false;
 
-        public UdpClient udpClient;
-        public IPEndPoint localEndPoint;
+        public UdpClient udpClientServer;
+        public IPEndPoint endPointServer;
 
         public MessageServer()
         {
             // Receive a message and write it to the console.
-            localEndPoint = new IPEndPoint(IPAddress.Any, listenPort);
-            udpClient = new UdpClient(localEndPoint);
+            endPointServer = new IPEndPoint(IPAddress.Any, listenPort);
+            udpClientServer = new UdpClient(endPointServer);
 
             ReceiveMessages();
         }
 
         public void ReceiveCallback(IAsyncResult result)
         {
-            var udpClient = ((UdpState)(result.AsyncState)).udpClient;
-            var endPoint = ((UdpState)(result.AsyncState)).endPoint;
+            try
+            {
+                var udpClient = ((UdpState)(result.AsyncState)).udpClient;
+                var endPoint = ((UdpState)(result.AsyncState)).endPoint;
 
-            byte[] receiveBytes = udpClient.EndReceive(result, ref endPoint);
-            string receiveString = Encoding.UTF8.GetString(receiveBytes);
+                byte[] receiveBytes = udpClient.EndReceive(result, ref endPoint);
+                string receiveString = Encoding.UTF8.GetString(receiveBytes);
 
-            Console.WriteLine($"Message received: {receiveString}");
-            messageReceived = true;
+                Console.WriteLine($"Message received: {receiveString}");
+
+
+                string messageRespond = $"Hello client, server received your message: {receiveString}";
+                byte[] responseBytes = Encoding.UTF8.GetBytes(messageRespond);
+                udpClient.SendAsync(responseBytes, messageRespond.Length, endPoint);
+
+                messageReceived = true;
+            }
+            catch (ArgumentNullException ex)
+            {
+                Console.WriteLine("asyncResult is null");
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine("asyncResult was not return by BeginReceive");
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine("An error occurred when attempting to access the underlying Socket.");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Console.WriteLine("The underlying Socket has been closed.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine("BeginReceive was previously called for the asynchronous read.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ReceiveCallback unknown exception. Messsage: " + ex.Message );
+            }
         }
 
         public void ReceiveMessages()
         {
             UdpState udpState = new UdpState
             {
-                endPoint = localEndPoint,
-                udpClient = udpClient
+                endPoint = endPointServer,
+                udpClient = udpClientServer
             };
 
             Console.WriteLine("listening for messages");
-            udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), udpState);
+            udpClientServer.BeginReceive(new AsyncCallback(ReceiveCallback), udpState);
 
             Console.WriteLine("Server is listening...");
+        }
+
+        public void SendCallback(IAsyncResult ar)
+        {
+            UdpClient u = (UdpClient)ar.AsyncState;
+
+            Console.WriteLine($"number of bytes sent: {u.EndSend(ar)}");
+            messageSent = true;
         }
     }
 }
