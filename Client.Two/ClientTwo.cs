@@ -5,21 +5,21 @@ using System.Text;
 using System.Threading;
 
 
-namespace Client.One
+namespace Client.Two
 {
-    public class ClientOne
+    public class ClientTwo
     {
         public int messageCount = 0;
         public UdpState udpStateServer;
 
-        public ClientOne()
+        public ClientTwo()
         {
             var serverAddress = IPAddress.Loopback;
             int serverPort = 1000;
 
             Thread.Sleep(1000);
 
-            var udpClient = new UdpClient(1001);
+            var udpClient = new UdpClient(1002);
             udpClient.Connect(serverAddress, serverPort);
             
             SendMessage(udpClient);
@@ -36,7 +36,7 @@ namespace Client.One
 
         public void SendMessage(UdpClient udpClient)
         {
-            Thread.Sleep(2000);
+            Thread.Sleep(10000);
 
             string messageText = "Hello Server! #" + messageCount;
             byte[] sendBytes = Encoding.UTF8.GetBytes(messageText);
@@ -71,7 +71,7 @@ namespace Client.One
 
         public void Log(string message)
         {
-            Console.BackgroundColor = ConsoleColor.DarkGray;
+            Console.BackgroundColor = ConsoleColor.Gray;
             Console.ForegroundColor = ConsoleColor.White;
 
             Console.WriteLine(message);
