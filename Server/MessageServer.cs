@@ -25,7 +25,7 @@ namespace Server
             ReceiveMessages();
         }
 
-        public void ReceiveCallback(IAsyncResult result)
+        public async void ReceiveCallback(IAsyncResult result)
         {
             try
             {
@@ -40,7 +40,10 @@ namespace Server
 
                 string messageRespond = $"Hello client, server received your message: {receiveString}";
                 byte[] responseBytes = Encoding.UTF8.GetBytes(messageRespond);
-                udpClient.SendAsync(responseBytes, messageRespond.Length, endPoint);
+
+                // TODO: use End for broadcast
+                await udpClient.SendAsync(responseBytes, messageRespond.Length, endPoint);
+                udpClient.EndSend += SendCallback;
 
                 messageReceived = true;
             }
