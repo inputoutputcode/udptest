@@ -11,7 +11,7 @@ namespace Client.One
     {
         public int messageCount = 0;
         public UdpState udpStateServer;
-
+        
         public ClientOne()
         {
             var serverAddress = IPAddress.Loopback;
@@ -36,9 +36,9 @@ namespace Client.One
 
         public void SendMessage(UdpClient udpClient)
         {
-            Thread.Sleep(2000);
+            //Thread.Sleep(2000);
 
-            string messageText = "Hello Server! #" + messageCount;
+            string messageText = "Hello server! #" + messageCount;
             byte[] sendBytes = Encoding.UTF8.GetBytes(messageText);
             udpClient.Send(sendBytes, sendBytes.Length);
             messageCount++;
@@ -58,20 +58,38 @@ namespace Client.One
                 client.BeginReceive(new AsyncCallback(ReceiveCallback), udpStateServer);
                 receivedValue = Encoding.UTF8.GetString(receivedBytes);
 
-                Log("Message you received: " + receivedValue.ToString());
-                Log("Message was sent from " + endPoint.Address.ToString() + " on port  " + endPoint.Port.ToString());
+                Log($"Message from {endPoint.Address}:{endPoint.Port}: " + receivedValue);
+
+                ValidateMessageCount(receivedValue);
 
                 SendMessage(client);
             }
             catch (Exception ex)
-            { 
-                
+            {
+                Log(ex.Message, true);
             }
         }
 
-        public void Log(string message)
+        public void ValidateMessageCount(string message)
         {
-            Console.BackgroundColor = ConsoleColor.DarkGray;
+            int numberIndex = message.IndexOf("#") + 1;
+            string numberText = message.Substring(numberIndex, message.Length - numberIndex);
+            int receivedMessageNumber = 0;
+            bool isParsed = int.TryParse(numberText, out receivedMessageNumber);
+            int lastMessageCount = messageCount - 1;
+
+            if (isParsed && receivedMessageNumber != lastMessageCount)
+            {
+                Log($"receivedMessageNumber:{receivedMessageNumber}<>messageCount:{lastMessageCount}", true);
+            }
+        }
+
+        public void Log(string message, bool isError = false)
+        {
+            if (isError)
+                Console.BackgroundColor = ConsoleColor.Red;
+            else
+                Console.BackgroundColor = ConsoleColor.DarkGray;
             Console.ForegroundColor = ConsoleColor.White;
 
             Console.WriteLine(message);

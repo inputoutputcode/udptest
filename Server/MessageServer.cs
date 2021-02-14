@@ -18,7 +18,7 @@ namespace Server
         public int messageCount = 0;
         public ConcurrentBag<UdpState> clientList = new ConcurrentBag<UdpState>();
         private readonly Timer broadCastTimer;
-
+        
         public MessageServer()
         {
             // Receive a message and write it to the console.
@@ -79,9 +79,9 @@ namespace Server
 
                 string receiveString = Encoding.UTF8.GetString(receiveBytes);
 
-                Log($"Message received: {receiveString}", endPoint);
+                Log($"Message from {endPoint.Address}:{endPoint.Port}: " + receiveString, endPoint);
 
-                string messageRespond = $"Hello client, I receveived: {receiveString}";
+                string messageRespond = $"Hello client, I received: {receiveString}";
                 SendMessage(udpClient, endPoint, messageRespond);
             }
             catch (ArgumentNullException ex)
@@ -112,20 +112,21 @@ namespace Server
 
         private void SendMessage(UdpClient udpClient, IPEndPoint endPoint, string messageRespond)
         {
+            messageRespond = $"Message sent: {messageRespond}";
             byte[] responseBytes = Encoding.UTF8.GetBytes(messageRespond);
-
-            // TODO: use End for broadcast
             udpClient.Send(responseBytes, messageRespond.Length, endPoint);
-
             Log(messageRespond, endPoint);
 
             messageCount++;
             messageReceived = true;
         }
-        public void Log(string message, IPEndPoint endPoint = null)
+
+        public void Log(string message, IPEndPoint endPoint = null, bool isError = false)
         {
             if (endPoint == null)
                 Console.BackgroundColor = ConsoleColor.DarkGreen;
+            else if (isError)
+                Console.BackgroundColor = ConsoleColor.Red;
             else if (endPoint.Port == 1002)
                 Console.BackgroundColor = ConsoleColor.Gray;
             else
